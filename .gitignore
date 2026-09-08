@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+!/frontend/.env.example
+/log/*
+/tmp/*
+/storage/*
+!/storage/.keep
+/frontend/node_modules/
+/frontend/dist/
+*.tsbuildinfo
+/public/assets/
+/public/index.html
+/backups/
+/test-results/
+/vendor/bundle/
+.DS_Store

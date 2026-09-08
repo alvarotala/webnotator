@@ -1,0 +1,47 @@
+name: webnotator
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      RAILS_ENV: production
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?Run scripts/setup.sh first}
+      DB_HOST: postgres
+      POSTGRES_DB: webnotator
+      POSTGRES_USER: webnotator
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/setup.sh first}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+      APP_URL: ${APP_URL:-http://localhost:8081}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,webnotator.sadmonkey.app}
+      HTTPS: ${HTTPS:-false}
+      SEED_DEMO: ${SEED_DEMO:-true}
+    ports:
+      - "8081:3000"
+    volumes:
+      - uploads:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/up"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: webnotator
+      POSTGRES_USER: webnotator
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U webnotator -d webnotator"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+volumes:
+  database:
+  uploads:

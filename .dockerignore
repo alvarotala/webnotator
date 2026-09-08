@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+node_modules
+frontend/node_modules
+frontend/dist
+**/*.tsbuildinfo
+log
+tmp
+storage
+backups
+test-results
+public/assets
+public/index.html
