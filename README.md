@@ -54,7 +54,7 @@ La cuenta de administrador se crea durante la instalación. Cambiar su contrase�
 ## Usar Webnotator
 
 1. Creá un proyecto en el panel.
-2. Agregá un dominio como `agendario.app` para habilitarlo junto con todos sus subdominios (`admin.agendario.app`, `beta.agendario.app`, etc.). Para autorizar solo un sitio, usá su URL completa, por ejemplo `https://admin.agendario.app`. Escribí uno por línea, sin rutas.
+2. En **Sitios autorizados**, escribí el dominio principal, por ejemplo `agendario.app`. Esto autoriza todas sus páginas y subdominios (`admin.agendario.app`, `calle11.agendario.app`, etc.). No hace falta agregarlos por separado. Escribí un dominio por línea, sin `https://` ni rutas.
 3. En **Invitar a revisar**, copiá el script y pegalo en el `<head>` del sitio.
 4. Compartí el enlace de invitación con tu cliente.
 5. El cliente escribe su nombre, abre el sitio y usa el botón **Anotar**.

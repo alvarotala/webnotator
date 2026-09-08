@@ -41,11 +41,16 @@
     if (markerAt >= 0) boot({ name: 'Webnotator', error: error.message });
   });
   function boot(context) {
+    if (!document.body) {
+      document.addEventListener('DOMContentLoaded', () => boot(context), { once: true });
+      return;
+    }
+    if (document.querySelector('[data-webnotator-root]')) return;
     const host = document.createElement('div');
     host.dataset.webnotatorRoot = '';
     // Inline styles here and inside the shadow root keep the host site's CSS out.
     host.style.cssText = 'all:initial!important;position:fixed!important;inset:auto 20px 20px auto!important;z-index:2147483647!important;display:block!important;';
-    document.documentElement.append(host);
+    document.body.append(host);
     const shadow = host.attachShadow({ mode: 'open' });
     const style = document.createElement('style');
     if (script.nonce) style.nonce = script.nonce;

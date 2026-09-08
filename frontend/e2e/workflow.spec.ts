@@ -25,7 +25,7 @@ test.beforeAll(async ({ playwright }) => {
   project = await response.json();
   server = createServer((_req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.end(`<!doctype html><html lang="es"><head><title>Sitio de prueba del cliente</title><script defer src="${appUrl}/widget.js" data-project="${project.public_key}"></script><style>body{font:18px system-ui;padding:50px}button,select,input{padding:15px;margin:15px}</style></head><body><h1 id="title">Reservá tu próxima cita</h1><form id="booking"><label for="service">Servicio</label><select id="service"><option>Masaje relajante</option><option>Corte de pelo</option></select><input id="private" placeholder="Tu teléfono" value="PRIVATE_FIELD_VALUE"/><button id="save" type="submit">Guardar cita</button></form><div id="results"></div><script>window.activationCount=0;document.querySelector('form').addEventListener('submit',e=>{e.preventDefault();window.activationCount++;document.querySelector('#results').textContent='Se guardó';});</script></body></html>`);
+    res.end(`<!doctype html><html lang="es"><head><title>Sitio de prueba del cliente</title><script defer src="${appUrl}/widget.js" data-project="${project.public_key}"></script><style>body{font:18px system-ui;padding:50px}button,select,input{padding:15px;margin:15px}</style></head><body><div id="root"><h1 id="title">Reservá tu próxima cita</h1><form id="booking"><label for="service">Servicio</label><select id="service"><option>Masaje relajante</option><option>Corte de pelo</option></select><input id="private" placeholder="Tu teléfono" value="PRIVATE_FIELD_VALUE"/><button id="save" type="submit">Guardar cita</button></form><div id="results"></div></div><script>window.activationCount=0;document.querySelector('form').addEventListener('submit',e=>{e.preventDefault();window.activationCount++;document.querySelector('#results').textContent='Se guardó';});</script></body></html>`);
   });
   await new Promise<void>(resolve => server.listen(9091, '127.0.0.1', resolve));
 });
@@ -36,6 +36,7 @@ async function activate(page: any) {
   await page.getByLabel('¿Cómo te llamás?').fill('María QA');
   await page.getByRole('button', {name: 'Abrir sitio y anotar'}).click();
   await expect(page.getByRole('button', {name: 'Abrir Webnotator'})).toBeVisible();
+  await expect(page.locator('body > [data-webnotator-root]')).toHaveCount(1);
   await expect(page).toHaveURL(`${origin}/`);
 }
 async function loginPanel(page: any) {
@@ -65,6 +66,24 @@ test('bundled demo activates the widget on the same origin', async ({page}) => {
   await expect(page.getByRole('heading', {name: 'Dejá tu anotación'})).toBeVisible();
   await expect(page.getByRole('dialog', {name: 'Webnotator'}).getByLabel('Tu nombre')).toHaveValue('Revisor Demo');
   await expect(page.locator('[data-webnotator-root]').locator('.surface')).toHaveCSS('font-family', /system-ui/);
+});
+
+test('widget stays outside the application root when page content changes', async ({page}) => {
+  await activate(page);
+  await expect(page.locator('#root [data-webnotator-root]')).toHaveCount(0);
+  await page.locator('#root').evaluate(root => {
+    const title = document.createElement('h1');
+    title.id = 'new-title';
+    title.textContent = 'Clientes';
+    root.replaceChildren(title);
+    history.pushState({}, '', '/clientes');
+  });
+  await expect(page.locator('body > [data-webnotator-root]')).toHaveCount(1);
+  await page.getByRole('button', {name: 'Abrir Webnotator'}).click();
+  await page.getByRole('button', {name: 'Seleccionar un elemento'}).click();
+  await page.locator('#new-title').click();
+  await expect(page.getByRole('heading', {name: 'Dejá tu anotación'})).toBeVisible();
+  await expect(page.getByRole('dialog', {name: 'Webnotator'})).toContainText('Clientes');
 });
 
 test('cross-origin invitation, DOM selection, attachment, dashboard and locating', async ({page, context}) => {
@@ -153,6 +172,8 @@ test('domain invitation accepts root and subdomains but rejects lookalikes', asy
   expect(update.ok()).toBeTruthy();
   try {
     for (const host of ['webnotator.localhost', 'admin.webnotator.localhost']) {
+      await page.goto(`http://${host}:9091/plataforma`);
+      await expect(page.locator('[data-webnotator-root]')).toHaveCount(0);
       await page.goto(project.invitation_url);
       await expect(page.getByLabel('Página para empezar')).toHaveValue('https://webnotator.localhost');
       await page.getByLabel('¿Cómo te llamás?').fill('Revisor del dominio');
