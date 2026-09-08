@@ -34,11 +34,42 @@ class FeedbackTest < ActionDispatch::IntegrationTest
     assert_nil response.parsed_body["invite_token"]
   end
 
-  test "origins must be exact and include a scheme without paths" do
+  test "site rules reject malformed domains and URLs with paths" do
     sign_in
-    [[], ["agendario.app"], ["https://agendario.app/path"], ["https://agendario.app/"], ["javascript:alert(1)"], ["https://user:pass@agendario.app"]].each do |origins|
+    [[], ["com"], ["*.agendario.app"], ["agendario.app/path"], ["agendario.app:8080"], ["agendario..app"], ["-agendario.app"], ["https://agendario.app/path"], ["https://agendario.app/"], ["javascript:alert(1)"], ["https://user:pass@agendario.app"]].each do |origins|
       post "/api/projects", params: {project: {name: "Test", origins: origins}}, as: :json, headers: csrf_headers
       assert_response :unprocessable_entity
+    end
+  end
+
+  test "bare domain permits root and nested subdomains with exact CORS responses" do
+    sign_in
+    post "/api/projects", params: {project: {name: "Agendario", origins: [" Agendario.APP "]}}, as: :json, headers: csrf_headers
+    assert_response :created
+    project = Project.last
+    assert_equal ["agendario.app"], project.origins
+
+    ["https://agendario.app", "https://admin.agendario.app", "https://preview.admin.agendario.app", "http://beta.agendario.app:8080"].each do |origin|
+      options "/api/widget/#{project.public_key}/context", headers: {"Origin" => origin}
+      assert_response :no_content
+      assert_equal origin, response.headers["Access-Control-Allow-Origin"]
+      post "/api/widget/#{project.public_key}/annotations", params: feedback_params(project, page_url: "#{origin}/plataforma"), headers: {"Origin" => origin, "Authorization" => "Bearer #{project.invite_token}"}
+      assert_response :created
+    end
+
+    ["https://evilagendario.app", "https://agendario.app.evil.com", "https://agendario.com", "https://agendario.app@evil.com", "null"].each do |origin|
+      options "/api/widget/#{project.public_key}/context", headers: {"Origin" => origin}
+      assert_response :forbidden
+      assert_nil response.headers["Access-Control-Allow-Origin"]
+    end
+    assert_equal 4, project.annotations.count
+  end
+
+  test "complete origins keep their scheme hostname and port restrictions" do
+    project = make_project("Exact", "https://admin.agendario.app:8443")
+    assert project.allows?("https://admin.agendario.app:8443")
+    ["https://admin.agendario.app", "http://admin.agendario.app:8443", "https://sub.admin.agendario.app:8443", "https://agendario.app:8443"].each do |origin|
+      assert_not project.allows?(origin)
     end
   end
 

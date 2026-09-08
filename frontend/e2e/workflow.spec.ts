@@ -137,7 +137,7 @@ test('mobile project creation, filters, logout, invalid login', async ({page}) =
   await page.setViewportSize({width: 1440, height: 1000});
   await page.getByRole('button', {name: 'Nuevo proyecto', exact: true}).click();
   await page.getByLabel('Nombre del proyecto').fill('QA Webnotator UI');
-  await page.getByLabel('Sitios autorizados').fill('https://beta.example.com');
+  await page.getByLabel('Sitios autorizados').fill('agendario.app');
   await page.getByRole('dialog').getByRole('button', {name: 'Crear proyecto', exact: true}).click();
   await expect(page.getByRole('heading', {name: 'QA Webnotator UI'})).toBeVisible();
   await page.getByRole('button', {name: 'Cerrar sesión'}).click();
@@ -146,6 +146,32 @@ test('mobile project creation, filters, logout, invalid login', async ({page}) =
   await page.getByLabel('Contraseña').fill('wrong-password');
   await page.getByRole('button', {name: 'Entrar al panel'}).click();
   await expect(page.getByRole('alert')).toContainText('Email o contraseña incorrectos');
+});
+
+test('domain invitation accepts root and subdomains but rejects lookalikes', async ({page}) => {
+  const update = await adminRequest.patch(`/api/projects/${project.id}`, {headers: {'X-CSRF-Token': csrf}, data: {project: {origins: ['webnotator.localhost', origin]}}});
+  expect(update.ok()).toBeTruthy();
+  try {
+    for (const host of ['webnotator.localhost', 'admin.webnotator.localhost']) {
+      await page.goto(project.invitation_url);
+      await expect(page.getByLabel('Página para empezar')).toHaveValue('https://webnotator.localhost');
+      await page.getByLabel('¿Cómo te llamás?').fill('Revisor del dominio');
+      await page.getByLabel('Página para empezar').fill('http://evilwebnotator.localhost:9091');
+      await page.getByRole('button', {name: 'Abrir sitio y anotar'}).click();
+      await expect(page.getByRole('alert')).toContainText('La dirección debe pertenecer');
+      await page.getByLabel('Página para empezar').fill(`http://${host}:9091/plataforma`);
+      await page.getByRole('button', {name: 'Abrir sitio y anotar'}).click();
+      await expect(page).toHaveURL(`http://${host}:9091/plataforma`);
+      await page.getByRole('button', {name: 'Abrir Webnotator'}).click();
+      await page.getByRole('button', {name: 'Anotar sobre esta página'}).click();
+      await page.getByLabel('¿Qué te gustaría cambiar?').fill(`Feedback desde ${host}`);
+      await page.getByRole('button', {name: 'Enviar anotación'}).click();
+      await expect(page.getByText('¡Anotación enviada!')).toBeVisible();
+    }
+  } finally {
+    const restored = await adminRequest.patch(`/api/projects/${project.id}`, {headers: {'X-CSRF-Token': csrf}, data: {project: {origins: [origin]}}});
+    expect(restored.ok()).toBeTruthy();
+  }
 });
 
 test('touch selection works and never copies an input value', async ({browser}) => {

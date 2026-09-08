@@ -54,7 +54,7 @@ La cuenta de administrador se crea durante la instalación. Cambiar su contrase�
 ## Usar Webnotator
 
 1. Creá un proyecto en el panel.
-2. Agregá los sitios autorizados, por ejemplo `https://agendario.app`. Incluí el protocolo y, si corresponde, el puerto; omití rutas y la barra final.
+2. Agregá un dominio como `agendario.app` para habilitarlo junto con todos sus subdominios (`admin.agendario.app`, `beta.agendario.app`, etc.). Para autorizar solo un sitio, usá su URL completa, por ejemplo `https://admin.agendario.app`. Escribí uno por línea, sin rutas.
 3. En **Invitar a revisar**, copiá el script y pegalo en el `<head>` del sitio.
 4. Compartí el enlace de invitación con tu cliente.
 5. El cliente escribe su nombre, abre el sitio y usa el botón **Anotar**.
@@ -64,6 +64,20 @@ Puede seleccionar un elemento o comentar sobre toda la página, elegir entre err
 Las anotaciones aparecen en el panel con su página, autor y contexto. Podés filtrarlas, cambiar su estado y abrir la página para localizar el elemento señalado.
 
 La invitación activa el widget en el navegador del cliente. **Renovar invitación** desactiva los enlaces y accesos anteriores.
+
+Un dominio sin protocolo permite HTTP y HTTPS en cualquier puerto. Una URL completa restringe el acceso al protocolo, dominio y puerto indicados. Las URLs ya guardadas mantienen ese acceso específico; podés reemplazarlas por el dominio principal desde **Configurar → Sitios autorizados**.
+
+## Actualizar en el servidor
+
+Desde la carpeta del proyecto, cuando los cambios estén publicados en el repositorio:
+
+```sh
+git pull --ff-only
+docker compose up -d --build --wait
+docker compose ps
+```
+
+La actualización conserva `.env`, la base de datos y los adjuntos. Las migraciones se ejecutan automáticamente al iniciar. No hace falta reinstalar ni borrar volúmenes.
 
 ## Probar la demo
 
