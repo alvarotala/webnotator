@@ -20,7 +20,7 @@ class WidgetController < ActionController::API
   end
 
   def context
-    render json: { name: @project.name }
+    render json: { name: @project.name, activation_domain: @project.activation_domain(@widget_origin) }
   end
 
   def show
@@ -74,6 +74,7 @@ class WidgetController < ActionController::API
     end
     response.headers["Access-Control-Allow-Origin"] = origin
     response.headers["Vary"] = "Origin"
+    @widget_origin = origin
   end
 
   def authenticate_invitation

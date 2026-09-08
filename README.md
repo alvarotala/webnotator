@@ -65,6 +65,8 @@ Las anotaciones aparecen en el panel con su página, autor y contexto. Podés fi
 
 La invitación activa el widget en el navegador del cliente. **Renovar invitación** desactiva los enlaces y accesos anteriores.
 
+Si configurás un dominio como `agendario.app`, la activación se comparte entre sus subdominios en ese navegador. Podés abrir la invitación en `admin.agendario.app` y continuar en `calle11.agendario.app` sin activarla de nuevo. El navegador debe permitir cookies del sitio. Las configuraciones con una URL exacta conservan la activación por sitio.
+
 Un dominio sin protocolo permite HTTP y HTTPS en cualquier puerto. Una URL completa restringe el acceso al protocolo, dominio y puerto indicados. Las URLs ya guardadas mantienen ese acceso específico; podés reemplazarlas por el dominio principal desde **Configurar → Sitios autorizados**.
 
 ## Actualizar en el servidor
@@ -78,6 +80,8 @@ docker compose ps
 ```
 
 La actualización conserva `.env`, la base de datos y los adjuntos. Las migraciones se ejecutan automáticamente al iniciar. No hace falta reinstalar ni borrar volúmenes.
+
+Para compartir una activación existente entre subdominios, después de actualizar recargá una vez la página donde ya funcionaba el widget. Por ejemplo, recargá `admin.agendario.app/plataforma` antes de continuar a `calle11.agendario.app`.
 
 ## Probar la demo
 

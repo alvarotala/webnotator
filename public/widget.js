@@ -6,8 +6,12 @@
   if (!project || document.querySelector('[data-webnotator-root]')) return;
   const base = new URL(script.src).origin;
   const key = `webnotator:${project}`;
+  const cookieKey = `webnotator_${encodeURIComponent(project)}`;
   let access;
   try { access = JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) { access = null; }
+  const sharedAccess = readSharedAccess();
+  if (sharedAccess?.token) access = sharedAccess;
+  let activationDomain = safeDomain(sharedAccess?.domain);
   let locateId;
   const marker = '~webnotator=';
   const markerAt = location.hash.indexOf(marker);
@@ -25,8 +29,38 @@
     } catch (_) { /* Ignore malformed activation fragments. */ }
   }
   if (!access?.token) return;
-  function persist() { try { localStorage.setItem(key, JSON.stringify(access)); } catch (_) { /* Storage may be disabled; current-tab access still works. */ } }
-  function forget() { try { localStorage.removeItem(key); } catch (_) {} }
+  function safeDomain(domain) {
+    return typeof domain === 'string' && /^[a-z0-9.-]+$/.test(domain) &&
+      (location.hostname === domain || location.hostname.endsWith(`.${domain}`)) ? domain : null;
+  }
+  function readSharedAccess() {
+    try {
+      const value = document.cookie.split('; ').find(item => item.startsWith(`${cookieKey}=`));
+      return value ? JSON.parse(decodeURIComponent(value.slice(cookieKey.length + 1))) : null;
+    } catch (_) { return null; }
+  }
+  function writeSharedAccess(value, maxAge) {
+    document.cookie = `${cookieKey}=${value}; Domain=${activationDomain}; Path=/; Max-Age=${maxAge}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+  }
+  function persist() {
+    if (activationDomain) {
+      try {
+        writeSharedAccess(encodeURIComponent(JSON.stringify({ ...access, domain: activationDomain })), 31536000);
+        if (readSharedAccess()?.token === access.token) {
+          // Migrate old per-origin activations so they cannot revive a cleared cookie.
+          try { localStorage.removeItem(key); } catch (_) {}
+          return;
+        }
+      } catch (_) { /* Fall back to per-origin storage when cookies are unavailable. */ }
+    }
+    try { localStorage.setItem(key, JSON.stringify(access)); } catch (_) { /* Current-tab access still works. */ }
+  }
+  function forget() {
+    if (activationDomain && readSharedAccess()?.token === access.token) {
+      try { writeSharedAccess('', 0); } catch (_) {}
+    }
+    try { localStorage.removeItem(key); } catch (_) {}
+  }
   async function request(path, options = {}) {
     const response = await fetch(`${base}/api/widget/${encodeURIComponent(project)}/${path}`, { ...options, credentials: 'omit', headers: { Authorization: `Bearer ${access.token}`, ...options.headers } });
     const result = await response.json().catch(() => ({}));
@@ -36,7 +70,11 @@
     }
     return result;
   }
-  request('context').then(boot).catch(error => {
+  request('context').then(context => {
+    activationDomain = safeDomain(context.activation_domain);
+    persist();
+    boot(context);
+  }).catch(error => {
     console.info('[Webnotator]', error.message);
     if (markerAt >= 0) boot({ name: 'Webnotator', error: error.message });
   });

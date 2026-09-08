@@ -19,6 +19,13 @@ class Project < ApplicationRecord
     end
   end
 
+  def activation_domain(origin)
+    return unless valid_origin?(origin)
+
+    host = URI.parse(origin).host.downcase
+    origins.select { |rule| domain_rule?(rule) && (host == rule || host.end_with?(".#{rule}")) }.min_by(&:length)
+  end
+
   private
 
   def assign_tokens

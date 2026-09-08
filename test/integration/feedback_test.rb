@@ -53,6 +53,9 @@ class FeedbackTest < ActionDispatch::IntegrationTest
       options "/api/widget/#{project.public_key}/context", headers: {"Origin" => origin}
       assert_response :no_content
       assert_equal origin, response.headers["Access-Control-Allow-Origin"]
+      get "/api/widget/#{project.public_key}/context", headers: {"Origin" => origin, "Authorization" => "Bearer #{project.invite_token}"}
+      assert_response :success
+      assert_equal "agendario.app", response.parsed_body["activation_domain"]
       post "/api/widget/#{project.public_key}/annotations", params: feedback_params(project, page_url: "#{origin}/plataforma"), headers: {"Origin" => origin, "Authorization" => "Bearer #{project.invite_token}"}
       assert_response :created
     end
@@ -68,9 +71,20 @@ class FeedbackTest < ActionDispatch::IntegrationTest
   test "complete origins keep their scheme hostname and port restrictions" do
     project = make_project("Exact", "https://admin.agendario.app:8443")
     assert project.allows?("https://admin.agendario.app:8443")
+    assert_nil project.activation_domain("https://admin.agendario.app:8443")
     ["https://admin.agendario.app", "http://admin.agendario.app:8443", "https://sub.admin.agendario.app:8443", "https://agendario.app:8443"].each do |origin|
       assert_not project.allows?(origin)
     end
+  end
+
+  test "shared activation domain is only returned after invitation authentication" do
+    project = make_project("Agendario", "agendario.app")
+    get "/api/widget/#{project.public_key}/context", headers: {"Origin" => "https://admin.agendario.app"}
+    assert_response :unauthorized
+    assert_nil response.parsed_body["activation_domain"]
+    assert_nil project.activation_domain("https://evilagendario.app")
+    assert_nil project.activation_domain("https://agendario.app.evil.com")
+    assert_nil project.activation_domain("null")
   end
 
   test "preflight only permits configured origin and no credentials are shared" do

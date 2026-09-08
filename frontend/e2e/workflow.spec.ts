@@ -24,6 +24,11 @@ test.beforeAll(async ({ playwright }) => {
   expect(response.status()).toBe(201);
   project = await response.json();
   server = createServer((_req, res) => {
+    if (_req.url === '/switch-site') {
+      res.writeHead(302, {Location: 'http://calle11.webnotator.localhost:9091/agenda'});
+      res.end();
+      return;
+    }
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.end(`<!doctype html><html lang="es"><head><title>Sitio de prueba del cliente</title><script defer src="${appUrl}/widget.js" data-project="${project.public_key}"></script><style>body{font:18px system-ui;padding:50px}button,select,input{padding:15px;margin:15px}</style></head><body><div id="root"><h1 id="title">Reservá tu próxima cita</h1><form id="booking"><label for="service">Servicio</label><select id="service"><option>Masaje relajante</option><option>Corte de pelo</option></select><input id="private" placeholder="Tu teléfono" value="PRIVATE_FIELD_VALUE"/><button id="save" type="submit">Guardar cita</button></form><div id="results"></div></div><script>window.activationCount=0;document.querySelector('form').addEventListener('submit',e=>{e.preventDefault();window.activationCount++;document.querySelector('#results').textContent='Se guardó';});</script></body></html>`);
   });
@@ -167,28 +172,67 @@ test('mobile project creation, filters, logout, invalid login', async ({page}) =
   await expect(page.getByRole('alert')).toContainText('Email o contraseña incorrectos');
 });
 
-test('domain invitation accepts root and subdomains but rejects lookalikes', async ({page}) => {
+test('one invitation follows redirects across authorized subdomains and remains revocable', async ({page, context}) => {
   const update = await adminRequest.patch(`/api/projects/${project.id}`, {headers: {'X-CSRF-Token': csrf}, data: {project: {origins: ['webnotator.localhost', origin]}}});
   expect(update.ok()).toBeTruthy();
   try {
-    for (const host of ['webnotator.localhost', 'admin.webnotator.localhost']) {
-      await page.goto(`http://${host}:9091/plataforma`);
-      await expect(page.locator('[data-webnotator-root]')).toHaveCount(0);
-      await page.goto(project.invitation_url);
-      await expect(page.getByLabel('Página para empezar')).toHaveValue('https://webnotator.localhost');
-      await page.getByLabel('¿Cómo te llamás?').fill('Revisor del dominio');
-      await page.getByLabel('Página para empezar').fill('http://evilwebnotator.localhost:9091');
-      await page.getByRole('button', {name: 'Abrir sitio y anotar'}).click();
-      await expect(page.getByRole('alert')).toContainText('La dirección debe pertenecer');
-      await page.getByLabel('Página para empezar').fill(`http://${host}:9091/plataforma`);
-      await page.getByRole('button', {name: 'Abrir sitio y anotar'}).click();
-      await expect(page).toHaveURL(`http://${host}:9091/plataforma`);
+    await page.goto('http://calle11.webnotator.localhost:9091/agenda');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('[data-webnotator-root]')).toHaveCount(0);
+    await page.goto(project.invitation_url);
+    await page.getByLabel('¿Cómo te llamás?').fill('Revisor del dominio');
+    await page.getByLabel('Página para empezar').fill('http://evilwebnotator.localhost:9091');
+    await page.getByRole('button', {name: 'Abrir sitio y anotar'}).click();
+    await expect(page.getByRole('alert')).toContainText('La dirección debe pertenecer');
+    await page.getByLabel('Página para empezar').fill('http://admin.webnotator.localhost:9091/plataforma');
+    await page.getByRole('button', {name: 'Abrir sitio y anotar'}).click();
+    await expect(page.getByRole('button', {name: 'Abrir Webnotator'})).toBeVisible();
+    const cookies = await context.cookies();
+    expect(cookies.find(cookie => cookie.name === `webnotator_${project.public_key}`)?.domain).toBe('.webnotator.localhost');
+    await page.goto('http://admin.webnotator.localhost:9091/switch-site');
+    await expect(page).toHaveURL('http://calle11.webnotator.localhost:9091/agenda');
+    for (const host of ['calle11.webnotator.localhost', 'webnotator.localhost', 'preview.admin.webnotator.localhost']) {
+      await page.goto(`http://${host}:9091/agenda`);
       await page.getByRole('button', {name: 'Abrir Webnotator'}).click();
       await page.getByRole('button', {name: 'Anotar sobre esta página'}).click();
+      await expect(page.getByLabel('Tu nombre')).toHaveValue('Revisor del dominio');
       await page.getByLabel('¿Qué te gustaría cambiar?').fill(`Feedback desde ${host}`);
       await page.getByRole('button', {name: 'Enviar anotación'}).click();
       await expect(page.getByText('¡Anotación enviada!')).toBeVisible();
     }
+    await page.goto('http://evilwebnotator.localhost:9091');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('[data-webnotator-root]')).toHaveCount(0);
+    const rotated = await adminRequest.post(`/api/projects/${project.id}/rotate_invitation`, {headers: {'X-CSRF-Token': csrf}});
+    expect(rotated.ok()).toBeTruthy();
+    project = await rotated.json();
+    for (const host of ['admin.webnotator.localhost', 'calle11.webnotator.localhost']) {
+      await page.goto(`http://${host}:9091/agenda`);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('[data-webnotator-root]')).toHaveCount(0);
+    }
+  } finally {
+    const restored = await adminRequest.patch(`/api/projects/${project.id}`, {headers: {'X-CSRF-Token': csrf}, data: {project: {origins: [origin]}}});
+    expect(restored.ok()).toBeTruthy();
+  }
+});
+
+test('existing local activation migrates to the configured domain and deactivation clears it', async ({page}) => {
+  const update = await adminRequest.patch(`/api/projects/${project.id}`, {headers: {'X-CSRF-Token': csrf}, data: {project: {origins: ['webnotator.localhost', origin]}}});
+  expect(update.ok()).toBeTruthy();
+  try {
+    await page.goto('http://admin.webnotator.localhost:9091/plataforma');
+    await page.evaluate(({key, token}) => localStorage.setItem(key, JSON.stringify({token, name: 'Revisor existente'})), {key: `webnotator:${project.public_key}`, token: project.invitation_url.split('/').pop()});
+    await page.reload();
+    await expect(page.getByRole('button', {name: 'Abrir Webnotator'})).toBeVisible();
+    expect(await page.evaluate(key => localStorage.getItem(key), `webnotator:${project.public_key}`)).toBeNull();
+    await page.goto('http://admin.webnotator.localhost:9091/switch-site');
+    await page.getByRole('button', {name: 'Abrir Webnotator'}).click();
+    await expect(page.getByRole('dialog', {name: 'Webnotator'})).toContainText('Revisor existente');
+    await page.getByRole('button', {name: 'Desactivar en este navegador'}).click();
+    await page.goto('http://admin.webnotator.localhost:9091/plataforma');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('[data-webnotator-root]')).toHaveCount(0);
   } finally {
     const restored = await adminRequest.patch(`/api/projects/${project.id}`, {headers: {'X-CSRF-Token': csrf}, data: {project: {origins: [origin]}}});
     expect(restored.ok()).toBeTruthy();
