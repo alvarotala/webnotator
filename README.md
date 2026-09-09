@@ -63,6 +63,8 @@ Puede seleccionar un elemento o comentar sobre toda la página, elegir entre err
 
 Las anotaciones aparecen en el panel con su página, autor y contexto. Podés filtrarlas, cambiar su estado y abrir la página para localizar el elemento señalado.
 
+El botón **Descargar todas (CSV)** descarga todas las anotaciones del proyecto seleccionado, incluidos todos los estados y páginas, aunque haya filtros activos. Incluye el comentario completo, autor, fechas, página, contexto del elemento y enlaces a las capturas. Las capturas se consultan con sesión iniciada en Webnotator.
+
 La invitación activa el widget en el navegador del cliente. **Renovar invitación** desactiva los enlaces y accesos anteriores.
 
 Si configurás un dominio como `agendario.app`, la activación se comparte entre sus subdominios en ese navegador. Podés abrir la invitación en `admin.agendario.app` y continuar en `calle11.agendario.app` sin activarla de nuevo. El navegador debe permitir cookies del sitio. Las configuraciones con una URL exacta conservan la activación por sitio.

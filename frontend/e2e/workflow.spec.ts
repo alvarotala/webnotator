@@ -172,6 +172,29 @@ test('mobile project creation, filters, logout, invalid login', async ({page}) =
   await expect(page.getByRole('alert')).toContainText('Email o contraseña incorrectos');
 });
 
+test('download exports all notes even when the list is filtered', async ({page}, testInfo) => {
+  await loginPanel(page);
+  await page.setViewportSize({width: 390, height: 844});
+  await page.getByLabel('Buscar anotaciones').fill('sin coincidencias para exportar');
+  await expect(page.getByText('No hay coincidencias')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({path: testInfo.outputPath('export-mobile.png'), fullPage: true});
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', {name: 'Descargar todas (CSV)'}).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe(`webnotator-${project.id}-anotaciones.csv`);
+  const file = testInfo.outputPath('anotaciones.csv');
+  await download.saveAs(file);
+  const csv = readFileSync(file, 'utf8');
+  expect(csv).toContain('Cambiar este título por “Tu próxima pausa empieza acá”.');
+  expect(csv).toContain('Guardar debería pedir confirmación.');
+  expect(csv).toContain('La lógica de horarios debería actualizarse.');
+  expect(csv).toContain('"Resuelto"');
+  expect(csv).toContain('"Pendiente"');
+  expect(csv).toContain('/screenshot');
+  await expect(page.getByText('No hay coincidencias')).toBeVisible();
+});
+
 test('one invitation follows redirects across authorized subdomains and remains revocable', async ({page, context}) => {
   const update = await adminRequest.patch(`/api/projects/${project.id}`, {headers: {'X-CSRF-Token': csrf}, data: {project: {origins: ['webnotator.localhost', origin]}}});
   expect(update.ok()).toBeTruthy();

@@ -18,6 +18,13 @@ class AnnotationsController < ApplicationController
     render json: @project.annotations.find(params[:id]).as_feedback(detail: true)
   end
 
+  def export
+    response.headers["Cache-Control"] = "private, no-store"
+    send_data AnnotationCsv.generate(@project, base_url: ENV.fetch("APP_URL")),
+      type: "text/csv; charset=utf-8", disposition: "attachment",
+      filename: "webnotator-#{@project.id}-anotaciones.csv"
+  end
+
   def update
     annotation = @project.annotations.find(params[:id])
     annotation.update!(params.require(:annotation).permit(:status))

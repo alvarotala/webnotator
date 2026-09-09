@@ -7,6 +7,7 @@ Rails.application.routes.draw do
     resources :projects, only: [:index, :create, :update] do
       post :rotate_invitation, on: :member
       resources :annotations, only: [:index, :show, :update] do
+        get :export, on: :collection
         get :screenshot, on: :member
       end
     end

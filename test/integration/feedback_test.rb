@@ -197,4 +197,55 @@ class FeedbackTest < ActionDispatch::IntegrationTest
     ScreenshotStore.delete(note&.screenshot_key)
     file&.close!
   end
+
+  test "CSV export requires admin and includes all project notes regardless of filters or pagination" do
+    project = make_project
+    32.times do |index|
+      project.annotations.create!(author_name: "María", body: "Comentario #{index}", kind: "change",
+        status: index.even? ? "resolved" : "pending", page_url: "#{project.origins.first}/pagina-#{index}", client_id: SecureRandom.uuid)
+    end
+    other = make_project("Otro proyecto")
+    other.annotations.create!(author_name: "Ana", body: "OTRO_PROYECTO_NO_EXPORTAR", kind: "bug", page_url: "#{other.origins.first}/", client_id: SecureRandom.uuid)
+    get "/api/projects/#{project.id}/annotations/export"
+    assert_response :unauthorized
+    sign_in
+    get "/api/projects/#{project.id}/annotations/export", params: {status: "resolved", q: "sin coincidencias", number: 2}
+    assert_response :success
+    assert_equal "text/csv", response.media_type
+    assert_includes response.headers["Content-Disposition"], "attachment"
+    assert_includes response.headers["Cache-Control"], "no-store"
+    assert response.body.start_with?("\uFEFF")
+    assert_equal 33, response.body.lines.size
+    assert_includes response.body, '"Comentario 0"'
+    assert_includes response.body, '"Comentario 31"'
+    assert_includes response.body, '"María"'
+    assert_includes response.body, '"Pendiente"'
+    assert_includes response.body, '"Resuelto"'
+    assert_not_includes response.body, "OTRO_PROYECTO_NO_EXPORTAR"
+  end
+
+  test "CSV export preserves quoted multiline feedback and escapes spreadsheet formulas" do
+    project = make_project
+    note = project.annotations.create!(author_name: "=1+1", body: "Cambiar \"título\", por otro\nSegunda línea", kind: "suggestion",
+      page_url: "#{project.origins.first}/agenda", client_id: SecureRandom.uuid,
+      element: {selector: "#titulo", tag: "h1", text: "@elemento"}, viewport: {width: 1280, height: 800}, screenshot_key: "example.png")
+    sign_in
+    get "/api/projects/#{project.id}/annotations/export"
+    assert_response :success
+    assert_includes response.body, %Q{"'=1+1"}
+    assert_includes response.body, %Q{"'@elemento"}
+    assert_includes response.body, %Q{"Cambiar ""título"", por otro\nSegunda línea"}
+    assert_includes response.body, "#{ENV.fetch('APP_URL')}/api/projects/#{project.id}/annotations/#{note.id}/screenshot"
+    assert_includes response.body, '"#titulo","h1"'
+    assert_includes response.body, '"1280","800"'
+  end
+
+  test "CSV export of an empty project contains headers" do
+    project = make_project
+    sign_in
+    get "/api/projects/#{project.id}/annotations/export"
+    assert_response :success
+    assert_equal 1, response.body.lines.size
+    assert_includes response.body, '"Anotación"'
+  end
 end
