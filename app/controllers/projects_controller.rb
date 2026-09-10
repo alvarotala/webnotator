@@ -30,7 +30,7 @@ class ProjectsController < ApplicationController
     project.as_json(only: [:id, :name, :public_key, :origins]).merge(
       invitation_url: "#{ENV.fetch('APP_URL')}/invite/#{project.invite_token}",
       counts: project.annotations.group(:status).count,
-      total: project.annotations.count
+      total: project.annotations.where.not(status: "discarded").count
     )
   end
 end

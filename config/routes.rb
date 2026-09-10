@@ -8,6 +8,7 @@ Rails.application.routes.draw do
       post :rotate_invitation, on: :member
       resources :annotations, only: [:index, :show, :update] do
         get :export, on: :collection
+        patch :bulk_update, on: :collection
         get :screenshot, on: :member
       end
     end
@@ -19,5 +20,6 @@ Rails.application.routes.draw do
   get "/api/widget/:project_key/annotations/:id", to: "widget#show"
   get "/demo", to: "pages#demo"
   get "/invite/:token", to: "pages#index"
+  get "/projects/:project_id/export", to: "pages#index"
   root "pages#index"
 end

@@ -94,19 +94,29 @@
     if (script.nonce) style.nonce = script.nonce;
     style.textContent = `
       :host{all:initial;font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#33283e;line-height:1.5;color-scheme:light}
-      .surface{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#33283e;line-height:1.5}*{box-sizing:border-box}button,input,textarea,select{font:inherit}button{cursor:pointer;border:0;border-radius:8px;padding:10px 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#f3eff9;color:#735393;font-weight:600}button:hover{filter:brightness(.96)}button:disabled{opacity:.6;cursor:wait}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #b5a1e8;outline-offset:2px}.launch{background:#7657df;color:white;border:1px solid #a58ae8;box-shadow:0 5px 25px #36234e35;border-radius:30px;height:48px;padding:0 19px;float:right;font-size:13px}.launch svg{width:18px;height:18px}.panel{background:white;border:1px solid #e0d7eb;border-radius:15px;box-shadow:0 12px 60px #25113535;width:350px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 96px);overflow:auto;margin-bottom:12px;padding:21px;clear:both}.hidden{display:none!important}.head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}.brand{font-size:16px;font-weight:700;letter-spacing:-.6px}.brand span{color:#9871de}.close{padding:2px 8px;background:none;font-size:22px;color:#a78ab7}.eyebrow{font-size:10px;letter-spacing:1.1px;color:#aa91b9;font-weight:700;text-transform:uppercase;margin-bottom:6px}h2{font-size:19px;line-height:1.3;letter-spacing:-.5px;margin:0 0 8px}p{color:#98859f;font-size:12px;margin:0 0 17px;line-height:1.7}.actions{display:grid;gap:9px}.primary{background:#7657df;color:white}.option{justify-content:flex-start;background:#f7f3fc;border:1px solid #e6dcf0;padding:14px;gap:12px;text-align:left;font-size:13px}.option span small{display:block;font-weight:400;color:#ab96b6;font-size:11px;margin-top:3px}.option svg{width:20px;height:20px;color:#9c79cc}.foot{display:flex;justify-content:space-between;margin-top:17px}.link{padding:0;background:none;color:#a58db3;font-size:10px;font-weight:400}.context{background:#f6f1fb;border-left:3px solid #a789d2;padding:10px 12px;border-radius:4px;font-size:11px;margin:15px 0;color:#9980ac;overflow-wrap:anywhere}.context strong{display:block;color:#785b92;font-size:12px;margin-bottom:3px}label{display:block;font-size:12px;color:#7f658e;font-weight:600;margin:13px 0 5px}input,textarea,select{width:100%;background:white;color:#55415f;border:1px solid #ded3e7;border-radius:7px;padding:9px;font-size:13px}textarea{resize:vertical;min-height:100px}input[type=file]{font-size:11px;padding:8px}.row{display:flex;gap:10px}.row>div{flex:1;min-width:0}.help{font-size:10px;color:#ae99b8;margin:5px 0 15px}.submit{width:100%;margin-top:15px}.error{color:#a6434c;background:#fff0f1;border-radius:6px;padding:10px;font-size:12px;margin:12px 0;white-space:pre-wrap}.success{padding:20px 0;text-align:center}.success-mark{font-size:30px;color:#8f6cb9;background:#f0e8fb;border-radius:50%;height:55px;width:55px;margin:0 auto 15px;display:grid;place-items:center}.target{position:fixed;pointer-events:none!important;border:2px solid #9564e5;background:#a472ef18;border-radius:3px;box-shadow:0 0 0 1px #fff8;z-index:2147483645}.target-label{position:absolute;bottom:100%;left:-2px;font-size:11px;background:#9564e5;color:white;padding:2px 6px;border-radius:4px 4px 0 0;white-space:nowrap}.select-banner{position:fixed;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:15px;background:#352641;color:white;padding:11px 17px;border-radius:11px;box-shadow:0 4px 20px #28123033;width:max-content;max-width:calc(100vw - 30px);font-size:12px}.select-banner button{font-size:11px;padding:5px 8px;background:#5d4271;color:white}.notice{position:fixed;bottom:85px;right:20px;max-width:350px;padding:14px 18px;border:1px solid #e6dcf0;border-radius:10px;background:white;box-shadow:0 5px 30px #25113525;font-size:13px;color:#7d5a91}@media(max-width:450px){.panel{width:calc(100vw - 32px)}.launch{height:45px}.select-banner{font-size:11px;gap:7px}.panel{padding:18px}}
+      .surface{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#33283e;line-height:1.5}*{box-sizing:border-box}button,input,textarea,select{font:inherit}button{cursor:pointer;border:0;border-radius:8px;padding:10px 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#f3eff9;color:#735393;font-weight:600}button:hover{filter:brightness(.96)}button:disabled{opacity:.6;cursor:wait}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #b5a1e8;outline-offset:2px}.launcher{display:flex;align-items:stretch;float:right;background:#7657df;border:1px solid #a58ae8;box-shadow:0 5px 25px #36234e35;border-radius:30px}.launch{background:transparent;color:white;border-radius:30px 0 0 30px;height:48px;padding:0 15px 0 19px;font-size:13px}.dismiss{background:transparent;color:white;border-left:1px solid #ffffff40;border-radius:0 30px 30px 0;width:40px;padding:0 4px 0 0;font-size:21px;font-weight:400}.launch svg{width:18px;height:18px}.panel{background:white;border:1px solid #e0d7eb;border-radius:15px;box-shadow:0 12px 60px #25113535;width:350px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 96px);overflow:auto;margin-bottom:12px;padding:21px;clear:both}.hidden{display:none!important}.head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}.brand{font-size:16px;font-weight:700;letter-spacing:-.6px}.brand span{color:#9871de}.close{padding:2px 8px;background:none;font-size:22px;color:#a78ab7}.eyebrow{font-size:10px;letter-spacing:1.1px;color:#aa91b9;font-weight:700;text-transform:uppercase;margin-bottom:6px}h2{font-size:19px;line-height:1.3;letter-spacing:-.5px;margin:0 0 8px}p{color:#98859f;font-size:12px;margin:0 0 17px;line-height:1.7}.actions{display:grid;gap:9px}.primary{background:#7657df;color:white}.option{justify-content:flex-start;background:#f7f3fc;border:1px solid #e6dcf0;padding:14px;gap:12px;text-align:left;font-size:13px}.option span small{display:block;font-weight:400;color:#ab96b6;font-size:11px;margin-top:3px}.option svg{width:20px;height:20px;color:#9c79cc}.foot{display:flex;justify-content:space-between;margin-top:17px}.link{padding:0;background:none;color:#a58db3;font-size:10px;font-weight:400}.context{background:#f6f1fb;border-left:3px solid #a789d2;padding:10px 12px;border-radius:4px;font-size:11px;margin:15px 0;color:#9980ac;overflow-wrap:anywhere}.context strong{display:block;color:#785b92;font-size:12px;margin-bottom:3px}label{display:block;font-size:12px;color:#7f658e;font-weight:600;margin:13px 0 5px}input,textarea,select{width:100%;background:white;color:#55415f;border:1px solid #ded3e7;border-radius:7px;padding:9px;font-size:13px}textarea{resize:vertical;min-height:100px}input[type=file]{font-size:11px;padding:8px}.row{display:flex;gap:10px}.row>div{flex:1;min-width:0}.help{font-size:10px;color:#ae99b8;margin:5px 0 15px}.submit{width:100%;margin-top:15px}.error{color:#a6434c;background:#fff0f1;border-radius:6px;padding:10px;font-size:12px;margin:12px 0;white-space:pre-wrap}.success{padding:20px 0;text-align:center}.success-mark{font-size:30px;color:#8f6cb9;background:#f0e8fb;border-radius:50%;height:55px;width:55px;margin:0 auto 15px;display:grid;place-items:center}.target{position:fixed;pointer-events:none!important;border:2px solid #9564e5;background:#a472ef18;border-radius:3px;box-shadow:0 0 0 1px #fff8;z-index:2147483645}.target-label{position:absolute;bottom:100%;left:-2px;font-size:11px;background:#9564e5;color:white;padding:2px 6px;border-radius:4px 4px 0 0;white-space:nowrap}.select-banner{position:fixed;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:15px;background:#352641;color:white;padding:11px 17px;border-radius:11px;box-shadow:0 4px 20px #28123033;width:max-content;max-width:calc(100vw - 30px);font-size:12px}.select-banner button{font-size:11px;padding:5px 8px;background:#5d4271;color:white}.notice{position:fixed;bottom:85px;right:20px;max-width:350px;padding:14px 18px;border:1px solid #e6dcf0;border-radius:10px;background:white;box-shadow:0 5px 30px #25113525;font-size:13px;color:#7d5a91}@media(max-width:450px){.panel{width:calc(100vw - 32px)}.launch{height:45px}.select-banner{font-size:11px;gap:7px}.panel{padding:18px}}
     `;
     shadow.append(style);
     const box = document.createElement('div');
     box.className = 'surface';
-    box.innerHTML = `<div class="panel hidden" role="dialog" aria-label="Webnotator"><div class="head"><span class="brand">webnotator<span>.</span></span><button class="close" aria-label="Cerrar">×</button></div><div class="content"></div></div><button class="launch" aria-label="Abrir Webnotator" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v12H10l-6 5V4z"/><path d="M8 8h8M8 12h5"/></svg> Anotar</button><div class="target hidden"><span class="target-label"></span></div><div class="select-banner hidden"><span>Seleccioná un elemento de la página</span><button class="cancel">Cancelar · Esc</button></div><div class="notice hidden" role="status"></div>`;
+    box.innerHTML = `<div class="panel hidden" role="dialog" aria-label="Webnotator"><div class="head"><span class="brand">webnotator<span>.</span></span><button class="close" aria-label="Cerrar">×</button></div><div class="content"></div></div><div class="launcher"><button class="launch" aria-label="Abrir Webnotator" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v12H10l-6 5V4z"/><path d="M8 8h8M8 12h5"/></svg> Anotar</button><button class="dismiss" aria-label="Ocultar Anotar hasta recargar" title="Ocultar hasta recargar la página">×</button></div><div class="target hidden"><span class="target-label"></span></div><div class="select-banner hidden"><span>Seleccioná un elemento de la página</span><button class="cancel">Cancelar · Esc</button></div><div class="notice hidden" role="status"></div>`;
     shadow.append(box);
-    const panel = shadow.querySelector('.panel'); const content = shadow.querySelector('.content'); const launch = shadow.querySelector('.launch'); const border = shadow.querySelector('.target'); const banner = shadow.querySelector('.select-banner'); const notice = shadow.querySelector('.notice');
-    let selecting = false, hovered = null, chosen = null, draft = {body: '', kind: 'change', name: access.name || '', file: null}, requestId = null, sending = false, noticeTimer;
+    const panel = shadow.querySelector('.panel'); const content = shadow.querySelector('.content'); const launch = shadow.querySelector('.launch'); const launcher = shadow.querySelector('.launcher'); const dismissButton = shadow.querySelector('.dismiss'); const border = shadow.querySelector('.target'); const banner = shadow.querySelector('.select-banner'); const notice = shadow.querySelector('.notice');
+    let selecting = false, hovered = null, chosen = null, draft = {body: '', kind: 'change', name: access.name || '', file: null}, requestId = null, sending = false, dismissed = false, noticeTimer;
     const escapeHtml = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
     const cursorIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m4 3 16 9-8 2-3 7-5-18z"/></svg>';
     function open() { panel.classList.remove('hidden'); launch.setAttribute('aria-expanded', 'true'); }
     function close() { if (sending) return; captureDraft(); stopSelection(); panel.classList.add('hidden'); launch.setAttribute('aria-expanded', 'false'); launch.focus(); }
+    function dismiss() {
+      if (sending) return;
+      dismissed = true;
+      stopSelection();
+      clearTimeout(noticeTimer);
+      document.removeEventListener('keydown', onKey, true);
+      // Keep the root marker to prevent reinjection during SPA navigation.
+      // This is only a DOM change: reloading restores the existing activation.
+      host.style.setProperty('display', 'none', 'important');
+    }
     function toast(message) { notice.textContent = message; notice.classList.remove('hidden'); clearTimeout(noticeTimer); noticeTimer = setTimeout(() => notice.classList.add('hidden'), 6000); }
     function home() {
       chosen = null; requestId = null;
@@ -144,7 +154,7 @@
       requestId ||= (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`);
       Object.entries({author_name: draft.name.trim(), body: draft.body.trim(), kind: draft.kind, page_url: pageUrl(), page_title: document.title.slice(0, 200), client_id: requestId, element: JSON.stringify(chosen || {}), viewport: JSON.stringify({width: innerWidth, height: innerHeight})}).forEach(([k,v]) => data.set(k,v));
       if (draft.file) data.set('screenshot', draft.file);
-      sending = true;
+      sending = true; dismissButton.disabled = true;
       const button = form.querySelector('.submit'); button.disabled = true; button.textContent = 'Enviando…';
       try {
         await request('annotations', {method: 'POST', body: data});
@@ -153,7 +163,7 @@
         content.querySelector('.again').onclick = () => {home(); close();};
         content.querySelector('.again').focus();
       } catch (e) { error.textContent = e.message || 'No hay conexión. Tu comentario sigue acá; intentá de nuevo.'; error.classList.remove('hidden'); button.disabled = false; button.textContent = 'Reintentar envío ↗'; }
-      finally {sending = false;}
+      finally {sending = false; dismissButton.disabled = false;}
     }
     function selectorFor(element) {
       const parts = []; let node = element;
@@ -201,7 +211,7 @@
     }
     function reposition() { if (hovered && selecting) draw(hovered); }
     function startSelection() {
-      captureDraft(); panel.classList.add('hidden'); banner.classList.remove('hidden'); launch.classList.add('hidden'); selecting = true;
+      captureDraft(); panel.classList.add('hidden'); banner.classList.remove('hidden'); launcher.classList.add('hidden'); selecting = true;
       document.addEventListener('pointermove', move, true);
       ['pointerdown', 'mousedown', 'submit', 'contextmenu'].forEach(type => document.addEventListener(type, block, {capture: true, passive: false}));
       document.addEventListener('click', pick, true);
@@ -209,7 +219,7 @@
     }
     function stopSelection() {
       selecting = false; hovered = null;
-      border.classList.add('hidden'); banner.classList.add('hidden'); launch.classList.remove('hidden');
+      border.classList.add('hidden'); banner.classList.add('hidden'); launcher.classList.remove('hidden');
       document.removeEventListener('pointermove', move, true);
       ['pointerdown', 'mousedown', 'submit', 'contextmenu'].forEach(type => document.removeEventListener(type, block, true));
       document.removeEventListener('click', pick, true);
@@ -224,14 +234,17 @@
     }
     launch.onclick = () => { if (!panel.classList.contains('hidden')) close(); else {open(); if (!content.children.length) home();} };
     shadow.querySelector('.close').onclick = close;
+    dismissButton.onclick = dismiss;
     shadow.querySelector('.cancel').onclick = () => {stopSelection(); open(); home();};
     document.addEventListener('keydown', onKey, true);
     if (context.error) {open(); home(); toast(context.error);}
     if (locateId) {
       request(`annotations/${locateId}`).then(note => {
+        if (dismissed) return;
         if (!note.element?.selector) { toast('Esta anotación corresponde a la página completa.'); return; }
         let attempts = 0;
         const find = () => {
+          if (dismissed) return;
           let element; try { element = document.querySelector(note.element.selector); } catch (_) {}
           // Do not silently highlight a different element after a DOM change.
           const matches = element && (!note.element.tag || element.localName === note.element.tag) && (!note.element.text || elementText(element) === note.element.text);

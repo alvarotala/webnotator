@@ -63,9 +63,13 @@ Puede seleccionar un elemento o comentar sobre toda la página, elegir entre err
 
 Las anotaciones aparecen en el panel con su página, autor y contexto. Podés filtrarlas, cambiar su estado y abrir la página para localizar el elemento señalado.
 
-El botón **Descargar todas (CSV)** descarga todas las anotaciones del proyecto seleccionado, incluidos todos los estados y páginas, aunque haya filtros activos. Incluye el comentario completo, autor, fechas, página, contexto del elemento y enlaces a las capturas. Las capturas se consultan con sesión iniciada en Webnotator.
+El botón **Exportar CSV** abre una pantalla interna para elegir estados, autor, rango de fechas de creación (UTC, ambos días incluidos), tipo, página y texto. Muestra cuántas anotaciones coinciden y descarga todas esas coincidencias, sin límite de paginación. Sus filtros son independientes de los de la lista. Incluye el comentario completo, autor, fechas, página, contexto del elemento y enlaces a las capturas. Las capturas se consultan con sesión iniciada en Webnotator.
+
+En la lista podés seleccionar anotaciones individualmente o todas las de la página actual y aplicar un cambio de estado en lote. La selección se limpia al cambiar de proyecto, filtros o página. Las ignoradas se conservan, pero quedan fuera de la vista y del total por defecto; se consultan con el filtro **Ignorada** y se pueden restaurar cambiando su estado. Para incluirlas en el CSV hay que seleccionarlas expresamente.
 
 La invitación activa el widget en el navegador del cliente. **Renovar invitación** desactiva los enlaces y accesos anteriores.
+
+La **×** junto a **Anotar** oculta temporalmente el widget para dejar libres los controles de la página. Al recargar vuelve a aparecer con la misma invitación y nombre; no desactiva el acceso.
 
 Si configurás un dominio como `agendario.app`, la activación se comparte entre sus subdominios en ese navegador. Podés abrir la invitación en `admin.agendario.app` y continuar en `calle11.agendario.app` sin activarla de nuevo. El navegador debe permitir cookies del sitio. Las configuraciones con una URL exacta conservan la activación por sitio.
 

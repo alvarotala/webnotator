@@ -198,7 +198,7 @@ class FeedbackTest < ActionDispatch::IntegrationTest
     file&.close!
   end
 
-  test "CSV export requires admin and includes all project notes regardless of filters or pagination" do
+  test "CSV export requires admin and includes all matching project notes across pagination" do
     project = make_project
     32.times do |index|
       project.annotations.create!(author_name: "María", body: "Comentario #{index}", kind: "change",
@@ -209,7 +209,7 @@ class FeedbackTest < ActionDispatch::IntegrationTest
     get "/api/projects/#{project.id}/annotations/export"
     assert_response :unauthorized
     sign_in
-    get "/api/projects/#{project.id}/annotations/export", params: {status: "resolved", q: "sin coincidencias", number: 2}
+    get "/api/projects/#{project.id}/annotations/export", params: {number: 2}
     assert_response :success
     assert_equal "text/csv", response.media_type
     assert_includes response.headers["Content-Disposition"], "attachment"
@@ -248,4 +248,102 @@ class FeedbackTest < ActionDispatch::IntegrationTest
     assert_equal 1, response.body.lines.size
     assert_includes response.body, '"Anotación"'
   end
+
+  test "ignored annotations are excluded by default from list exports and project total" do
+    project = make_project
+    active = create_note(project, body: "VISIBLE")
+    ignored = create_note(project, status: "discarded", body: "IGNORADA")
+    sign_in
+    [nil, "", "all"].each do |status|
+      get "/api/projects/#{project.id}/annotations", params: {status: status}
+      assert_equal [active.id], response.parsed_body["items"].map { |note| note["id"] }
+      assert_equal 1, response.parsed_body["total"]
+    end
+    get "/api/projects"
+    assert_equal 1, response.parsed_body.find { |item| item["id"] == project.id }["total"]
+    get "/api/projects/#{project.id}/annotations/export"
+    assert_includes response.body, '"VISIBLE"'
+    assert_not_includes response.body, '"IGNORADA"'
+    get "/api/projects/#{project.id}/annotations", params: {status: "discarded"}
+    assert_equal [ignored.id], response.parsed_body["items"].map { |note| note["id"] }
+    get "/api/projects/#{project.id}/annotations/export", params: {status: ["pending", "discarded"]}
+    assert_includes response.body, '"VISIBLE"'
+    assert_includes response.body, '"IGNORADA"'
+    assert_includes response.body, '"Ignorada"'
+  end
+
+  test "export combines statuses author inclusive UTC dates type page and search without pagination" do
+    project = make_project
+    attrs = {author_name: "María", kind: "bug", page_url: "#{project.origins.first}/agenda", body: "REVISAR FECHA"}
+    start = Time.utc(2026, 9, 1)
+    finish = Time.utc(2026, 9, 2, 23, 59, 59)
+    31.times { create_note(project, **attrs, created_at: start) }
+    create_note(project, **attrs, status: "resolved", created_at: finish)
+    [ {created_at: start - 1.second}, {created_at: finish + 1.second}, {author_name: "Ana"}, {kind: "change"},
+      {page_url: "#{project.origins.first}/otra"}, {body: "OTRO TEXTO"}, {status: "discarded"} ].each do |override|
+      create_note(project, **attrs.merge(created_at: start).merge(override))
+    end
+    sign_in
+    filters = {status: ["pending", "resolved"], author: "María", kind: "bug", page: attrs[:page_url], q: "revisar", from: "2026-09-01", to: "2026-09-02", number: 2}
+    get "/api/projects/#{project.id}/annotations", params: filters
+    assert_response :success
+    assert_equal 32, response.parsed_body["total"]
+    assert_equal 2, response.parsed_body["items"].size
+    assert_equal ["Ana", "María"], response.parsed_body["authors"]
+    get "/api/projects/#{project.id}/annotations/export", params: filters
+    assert_response :success
+    assert_equal 33, response.body.lines.size
+    assert_includes response.body, finish.iso8601
+    get "/api/projects/#{project.id}/annotations/export", params: filters.merge(q: "sin coincidencias")
+    assert_equal 1, response.body.lines.size
+  end
+
+  test "invalid export and listing filters return helpful errors" do
+    project = make_project
+    sign_in
+    [{from: "2026-02-30"}, {to: "invalid"}, {from: "2026-09-03", to: "2026-09-01"}, {status: ["unknown"]}, {kind: "unknown"}].each do |filters|
+      ["", "/export"].each do |suffix|
+        get "/api/projects/#{project.id}/annotations#{suffix}", params: filters
+        assert_response :unprocessable_entity
+        assert response.parsed_body["error"].present?
+      end
+    end
+  end
+
+  test "bulk status updates require authentication CSRF valid input and complete project membership" do
+    project = make_project
+    notes = 2.times.map { create_note(project) }
+    untouched = create_note(project)
+    foreign = create_note(make_project("Otro"))
+    endpoint = "/api/projects/#{project.id}/annotations/bulk_update"
+    patch endpoint, params: {ids: notes.map(&:id), status: "resolved"}, as: :json
+    assert_response :unprocessable_entity
+    get "/api/session"
+    patch endpoint, params: {ids: notes.map(&:id), status: "resolved"}, as: :json, headers: {"X-CSRF-Token" => response.parsed_body["csrf_token"]}
+    assert_response :unauthorized
+    sign_in
+    [[], [notes[0].id, foreign.id], [notes[0].id, 0], [notes[0].id, 999999999], Array.new(101, notes[0].id)].each do |ids|
+      patch endpoint, params: {ids: ids, status: "resolved"}, as: :json, headers: csrf_headers
+      assert_includes [404, 422], response.status
+      assert_equal ["pending"], notes.map { |note| note.reload.status }.uniq
+    end
+    patch endpoint, params: {ids: notes.map(&:id), status: "unknown"}, as: :json, headers: csrf_headers
+    assert_response :unprocessable_entity
+    patch endpoint, params: {ids: notes.map(&:id), status: "discarded"}, as: :json, headers: csrf_headers
+    assert_response :success
+    assert_equal 2, response.parsed_body["updated"]
+    assert_equal ["discarded"], notes.map { |note| note.reload.status }.uniq
+    assert_equal "pending", untouched.reload.status
+    assert_equal "pending", foreign.reload.status
+    patch endpoint, params: {ids: notes.map(&:id), status: "pending"}, as: :json, headers: csrf_headers
+    assert_response :success
+    assert_equal ["pending"], notes.map { |note| note.reload.status }.uniq
+  end
+
+  private
+
+  def create_note(project, **attrs)
+    project.annotations.create!({author_name: "Ana", body: "Revisar", kind: "change", page_url: "#{project.origins.first}/", client_id: SecureRandom.uuid}.merge(attrs))
+  end
+
 end

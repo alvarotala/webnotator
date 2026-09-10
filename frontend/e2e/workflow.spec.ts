@@ -58,6 +58,47 @@ test('widget stays hidden without invitation', async ({page}) => {
   await expect(page.locator('[data-webnotator-root]')).toHaveCount(0);
 });
 
+for (const touch of [false, true]) {
+  test(`launcher can be hidden until reload on ${touch ? 'mobile' : 'desktop'}`, async ({browser}, testInfo) => {
+    const context = await browser.newContext({viewport: touch ? {width: 390, height: 844} : {width: 1440, height: 1000}, hasTouch: touch, isMobile: touch});
+    const page = await context.newPage();
+    try {
+      await activate(page);
+      const launch = page.getByRole('button', {name: 'Abrir Webnotator'});
+      const hide = page.getByRole('button', {name: 'Ocultar Anotar hasta recargar'});
+      const accessBefore = await page.evaluate(key => localStorage.getItem(key), `webnotator:${project.public_key}`);
+      const bounds = await launch.boundingBox();
+      expect(bounds).toBeTruthy();
+      await page.evaluate(rect => {
+        const button = document.createElement('button');
+        button.textContent = 'Página siguiente del cliente';
+        button.style.cssText = `position:fixed;left:${rect!.x}px;top:${rect!.y}px;width:${rect!.width}px;height:${rect!.height}px;margin:0;padding:0;z-index:1000`;
+        button.onclick = () => { button.textContent = 'Página 2 del cliente'; history.pushState({}, '', '/pagina-2'); };
+        document.body.append(button);
+      }, bounds);
+      expect(await page.evaluate(rect => document.elementFromPoint(rect!.x + rect!.width / 2, rect!.y + rect!.height / 2)?.hasAttribute('data-webnotator-root'), bounds)).toBe(true);
+      await page.screenshot({path: testInfo.outputPath('launcher.png')});
+      if (touch) await hide.tap(); else { await hide.focus(); await page.keyboard.press('Enter'); }
+      await expect(launch).toBeHidden();
+      await expect(hide).toBeHidden();
+      const pagination = page.getByRole('button', {name: 'Página siguiente del cliente'});
+      if (touch) await pagination.tap(); else await pagination.click();
+      await expect(page.getByRole('button', {name: 'Página 2 del cliente'})).toBeVisible();
+      await expect(launch).toBeHidden();
+      expect(await page.evaluate(key => localStorage.getItem(key), `webnotator:${project.public_key}`)).toBe(accessBefore);
+      await page.reload();
+      await expect(launch).toBeVisible();
+      await expect(hide).toBeVisible();
+      await launch.click();
+      await page.getByRole('button', {name: 'Anotar sobre esta página'}).click();
+      await expect(page.getByLabel('Tu nombre')).toHaveValue('María QA');
+      await hide.click();
+      await expect(page.getByRole('dialog', {name: 'Webnotator'})).toBeHidden();
+      await expect(launch).toBeHidden();
+    } finally { await context.close(); }
+  });
+}
+
 test('bundled demo activates the widget on the same origin', async ({page}) => {
   const projects = await (await adminRequest.get('/api/projects')).json();
   const demo = projects.find((item: any) => item.name === 'Agendario · Demo');
@@ -172,15 +213,22 @@ test('mobile project creation, filters, logout, invalid login', async ({page}) =
   await expect(page.getByRole('alert')).toContainText('Email o contraseña incorrectos');
 });
 
-test('download exports all notes even when the list is filtered', async ({page}, testInfo) => {
+test('export page has independent filters and downloads matching notes', async ({page}, testInfo) => {
   await loginPanel(page);
   await page.setViewportSize({width: 390, height: 844});
   await page.getByLabel('Buscar anotaciones').fill('sin coincidencias para exportar');
   await expect(page.getByText('No hay coincidencias')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({path: testInfo.outputPath('export-mobile.png'), fullPage: true});
+  await page.getByRole('button', {name: 'Exportar CSV'}).click();
+  await expect(page).toHaveURL(`${appUrl}/projects/${project.id}/export`);
+  await expect(page.getByRole('heading', {name: 'Exportar anotaciones'})).toBeVisible();
+  await expect(page.getByText('3 anotaciones para exportar', {exact: true})).toBeVisible();
+  await expect(page.getByLabel('Ignorada', {exact: true})).not.toBeChecked();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({path: testInfo.outputPath('export-mobile.png'), fullPage: true});
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', {name: 'Descargar todas (CSV)'}).click();
+  await page.getByRole('button', {name: 'Descargar CSV', exact: true}).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe(`webnotator-${project.id}-anotaciones.csv`);
   const file = testInfo.outputPath('anotaciones.csv');
@@ -192,7 +240,82 @@ test('download exports all notes even when the list is filtered', async ({page},
   expect(csv).toContain('"Resuelto"');
   expect(csv).toContain('"Pendiente"');
   expect(csv).toContain('/screenshot');
+  await page.getByLabel('Pendiente', {exact: true}).uncheck();
+  await page.getByLabel('En curso', {exact: true}).uncheck();
+  await page.getByLabel('Autor', {exact: true}).selectOption('María QA');
+  const today = new Date().toISOString().slice(0, 10);
+  await page.getByLabel('Desde (fecha de creación, UTC)').fill(today);
+  await page.getByLabel('Hasta (inclusive, UTC)').fill(today);
+  await expect(page.getByText('1 anotación para exportar', {exact: true})).toBeVisible();
+  const filteredDownload = page.waitForEvent('download');
+  await page.getByRole('button', {name: 'Descargar CSV', exact: true}).click();
+  const filteredFile = testInfo.outputPath('filtradas.csv');
+  await (await filteredDownload).saveAs(filteredFile);
+  const filteredCsv = readFileSync(filteredFile, 'utf8');
+  expect(filteredCsv).toContain('Cambiar este título');
+  expect(filteredCsv).not.toContain('Guardar debería');
+  expect(filteredCsv).not.toContain('La lógica');
+  await page.getByLabel('Resuelto', {exact: true}).uncheck();
+  await expect(page.getByRole('alert')).toContainText('Elegí al menos un estado');
+  await expect(page.getByRole('button', {name: 'Descargar CSV', exact: true})).toBeDisabled();
+  await page.getByRole('button', {name: 'Restablecer filtros'}).click();
+  await page.getByLabel('Buscar texto').fill('no existe este texto');
+  await expect(page.getByText('0 anotaciones para exportar', {exact: true})).toBeVisible();
+  await expect(page.getByRole('button', {name: 'Descargar CSV', exact: true})).toBeDisabled();
+  await page.goBack();
   await expect(page.getByText('No hay coincidencias')).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole('heading', {name: 'Exportar anotaciones'})).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', {name: 'Exportar anotaciones'})).toBeVisible();
+  await page.setViewportSize({width: 1440, height: 1000});
+  await page.screenshot({path: testInfo.outputPath('export-desktop.png'), fullPage: true});
+  await page.getByRole('button', {name: 'Volver a anotaciones'}).click();
+  await expect(page.getByLabel('Filtrar por estado')).toBeVisible();
+});
+
+test('bulk actions hide ignored notes and allow restoring them explicitly', async ({page}, testInfo) => {
+  await loginPanel(page);
+  await page.getByLabel('Filtrar por estado').selectOption('pending');
+  await expect(page.getByRole('button', {name: /Guardar debería/})).toBeVisible();
+  const selectAll = page.getByLabel('Seleccionar todas las anotaciones de esta página');
+  await selectAll.check();
+  await expect(page.getByText('2 seleccionadas', {exact: true})).toBeVisible();
+  await page.getByLabel('Filtrar por tipo').selectOption('bug');
+  await expect(page.getByText('2 seleccionadas', {exact: true})).toHaveCount(0);
+  await expect(page.getByRole('button', {name: /La lógica/})).toBeVisible();
+  await expect(selectAll).not.toBeChecked();
+  await page.getByLabel('Filtrar por tipo').selectOption('');
+  await expect(page.getByRole('button', {name: /Guardar debería/})).toBeVisible();
+  const boxes = page.getByRole('checkbox', {name: /^Seleccionar anotación #/});
+  await boxes.first().check();
+  expect(await selectAll.evaluate((el: HTMLInputElement) => el.indeterminate)).toBe(true);
+  await expect(page.getByLabel('Detalle de anotación')).toHaveCount(0);
+  await selectAll.check();
+  await page.getByLabel('Estado para las seleccionadas').selectOption('discarded');
+  await page.setViewportSize({width: 390, height: 844});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({path: testInfo.outputPath('bulk-mobile.png'), fullPage: true});
+  await page.getByRole('button', {name: 'Aplicar', exact: true}).click();
+  await expect(page.getByRole('status')).toContainText('2 anotaciones actualizadas');
+  await expect(page.getByRole('button', {name: /Guardar debería/})).toHaveCount(0);
+  await page.getByLabel('Filtrar por estado').selectOption('');
+  await expect(page.getByRole('button', {name: /Cambiar este título/})).toBeVisible();
+  await expect(page.getByRole('button', {name: /Guardar debería/})).toHaveCount(0);
+  await page.getByRole('button', {name: 'Exportar CSV'}).click();
+  await expect(page.getByText('1 anotación para exportar', {exact: true})).toBeVisible();
+  await page.getByLabel('Ignorada', {exact: true}).check();
+  await expect(page.getByText('3 anotaciones para exportar', {exact: true})).toBeVisible();
+  await page.getByRole('button', {name: 'Volver a anotaciones'}).click();
+  await page.getByLabel('Filtrar por estado').selectOption('discarded');
+  await expect(page.getByRole('button', {name: /Guardar debería/})).toBeVisible();
+  await expect(boxes).toHaveCount(2);
+  await selectAll.check();
+  await page.getByLabel('Estado para las seleccionadas').selectOption('pending');
+  await page.getByRole('button', {name: 'Aplicar', exact: true}).click();
+  await expect(page.getByText('No hay coincidencias')).toBeVisible();
+  await page.getByLabel('Filtrar por estado').selectOption('');
+  await expect(page.getByRole('button', {name: /Guardar debería/})).toBeVisible();
 });
 
 test('one invitation follows redirects across authorized subdomains and remains revocable', async ({page, context}) => {

@@ -1,13 +1,13 @@
 class AnnotationCsv
   KINDS = { "bug" => "Error", "change" => "Cambio", "suggestion" => "Sugerencia" }.freeze
-  STATUSES = { "pending" => "Pendiente", "in_progress" => "En curso", "resolved" => "Resuelto", "discarded" => "Descartado" }.freeze
+  STATUSES = { "pending" => "Pendiente", "in_progress" => "En curso", "resolved" => "Resuelto", "discarded" => "Ignorada" }.freeze
 
-  def self.generate(project, base_url:)
+  def self.generate(project, base_url:, annotations: project.annotations.where.not(status: "discarded"))
     # UTF-8 BOM lets spreadsheet applications recognize accents correctly.
     output = +"\uFEFF"
     output << row(["ID", "Proyecto", "Autor", "Tipo", "Estado", "Anotación", "URL", "Título de página",
       "Selector", "Etiqueta", "Texto del elemento", "Ancho de pantalla", "Alto de pantalla", "Creada (UTC)", "Actualizada (UTC)", "Captura"])
-    project.annotations.find_each(order: :desc) do |note|
+    annotations.find_each(order: :desc) do |note|
       screenshot = note.screenshot_key.present? ? "#{base_url.delete_suffix('/')}/api/projects/#{project.id}/annotations/#{note.id}/screenshot" : nil
       output << row([note.id, project.name, note.author_name, KINDS.fetch(note.kind), STATUSES.fetch(note.status),
         note.body, note.page_url, note.page_title, note.element["selector"], note.element["tag"], note.element["text"],
